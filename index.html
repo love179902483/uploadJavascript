@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="./jquery.js"></script>
+    <script src="./md5.js"></script>
+    <script src="./index.js"></script>
+    <script src="./node_modules/axios/dist/axios.js"></script>
+    <script src='./node_modules/spark-md5/spark-md5.min.js'></script>
+</head>
+
+<body>
+    <input type="file" name="" id="fileInp" accept="video/mp4">
+</body>
+
+<script>
+    var fileDom = document.getElementById('fileInp');
+    fileDom.onchange = async function () {
+        const file = fileDom.files[0];
+        const limitSize = 1024 * 1024 * 1024;
+        const limitType = ['video/mp4']
+        console.log(file)
+        if (!file) return;
+        if (!limitType.includes(file.type)) {
+            alert('必须是mp4')
+            fileDom.value = '';
+            return;
+        }
+        if (file.size > limitSize) {
+            alert('太大了！');
+            fileDom.value = '';
+            return;
+        }
+        
+
+
+        // let num = 0;
+
+
+        await startUpload();
+
+        async function startUpload() {
+            // 每一个切片长度
+            const everySlice = 1024 * 1024 * 10;
+            const sliceLength = Math.ceil(file.size / everySlice);
+            console.log(sliceLength);
+
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(file);
+            reader.addEventListener('load', async (e)=> {
+
+                // 文件md5之后的字符串
+                const md5Result = SparkMD5.ArrayBuffer.hash(e.target.result);
+                console.log(e.target.result)
+                console.log(md5Result)
+                for (let i = 0, j = sliceLength; i < j; i++) {
+                    // 本片bufferArray
+                    const thisSlice = file.slice(i * everySlice, (i + 1) * everySlice);
+                    // console.log(typeof thisSlice)
+                    // 到头了打印日志
+                    // if(thisSlice.length < everySlice) console.log(`到头了${thisSlice.length} 共${i}`);
+                    // console.log(thisSlice)
+                    const data = new FormData();
+                    data.append('number', i);
+                    data.append('filename', md5Result);
+                    data.append('length', sliceLength)
+                    data.append('slice', thisSlice)
+
+                    const test = await axios.post('http://127.0.0.1:6001/upload', data);
+                    console.log(i)
+                    console.log(test)
+                }
+
+                const data = new FormData();
+                data.append('filename', md5Result);
+                data.append('end', true);
+
+                console.log(222222222222);
+                const test2 = await axios.post('http://127.0.0.1:6001/merge', data)
+            })
+
+
+
+        }
+
+        // const reader = new FileReader();
+        // // 获取读取文件的流
+        // reader.readAsArrayBuffer(file);
+        // reader.addEventListener('load', async function(e){
+        //     // e.target.result.len
+        //     // var slice = e.target.result.slice(0, 1024*1024);
+        //     // 获取bufferArray的长度
+        //     let canGo = true;
+        //     let num = 0;
+        //     // 每一个切片长度
+        //     const everySlice =  1024 * 1024 ;
+        //     // 需要切几片
+        //     const sliceLength = Math.ceil(e.target.result.byteLength / everySlice);
+        //     console.log(sliceLength)
+
+        //     for(let i=0, j=sliceLength; i<j; i++){
+        //         // 本片bufferArray
+        //         const thisSlice = e.target.result.slice(i*everySlice, (i+1)*everySlice);
+        //         // 到头了打印日志
+        //         if(thisSlice.byteLength < everySlice) console.log(`到头了${thisSlice.byteLength} 共${i}`);
+
+        //         const data = new FormData();
+        //         data.append('number', i);
+        //         data.append('filename', md5Result);
+        //         data.append('length', sliceLength)
+        //         data.append('slice', thisSlice)
+
+        //         const test = await axios.post('http://127.0.0.1:6001/upload', data );
+        //     }
+
+        // })
+    }
+</script>
+
+</html>
